@@ -10,13 +10,12 @@ def create_diff_simulations():
     for bool in (True, False):
         for bool2 in (True, False):
             histories.append(simulate(np.random.randint(4,9), branching_prob=0.0, circular=bool, clocklike=bool2))
-
     return histories
 
 def compare_first4leaves(history, rec_tree):
-    first4leaves = history.d[:4]
+    first4leaves = history.history[:4] #TODO 
     for candidate in rec_tree.preorder():
-        print(f'Candidate: {candidate}.......... Actual first 4 leaves: {first4leaves}')
+        print(f'Candidate: {candidate.V}.......... Actual first 4 leaves: {first4leaves}')
 
 def recognize_histories(histories, first_candidate_only=False, print_info= False):
     for history in histories:
@@ -24,7 +23,7 @@ def recognize_histories(histories, first_candidate_only=False, print_info= False
         
         is_rmap = (rec_tree.root.valid_ways > 0)
         if is_rmap:
-            compare_first4leaves()
+            compare_first4leaves(history, rec_tree)
         else:
             handle_reconstruction_failure()
 
