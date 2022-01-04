@@ -13,7 +13,7 @@ def create_diff_simulations():
     return histories
 
 def compare_first4leaves(history, rec_tree):
-    first4leaves = history.history[:4] #TODO 
+    first4leaves = history.history[:4] #TODO get first 4 vertices
     for candidate in rec_tree.preorder():
         print(f'Candidate: {candidate.V}.......... Actual first 4 leaves: {first4leaves}')
 
@@ -22,6 +22,7 @@ def recognize_histories(histories, first_candidate_only=False, print_info= False
         rec_tree = recognize(history.D, first_candidate_only=first_candidate_only, print_info=print_info)
         
         is_rmap = (rec_tree.root.valid_ways > 0)
+        # TODO measure divergence / runtime 
         if is_rmap:
             compare_first4leaves(history, rec_tree)
         else:
