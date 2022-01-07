@@ -8,14 +8,19 @@ import os
 import timeit
 
 def write_simulation_to_file(circular, clocklike, size, history, id):
+    result_dir = os.path.join(os.getcwd(), 'sim')
+    if not os.path.exists(result_dir):
+        os.makedirs(result_dir)
+
     filename = f'{id}_simulation_circular{circular}_clocklike_{clocklike}_size{size}'
-    filename = os.path.join(os.getcwd(), 'sim',filename)
+    filename = os.path.join(result_dir,filename)
     history.write_history(filename)
 
 def load_simulations_from_files():
     histories = []
-    for file in next(os.walk(os.path.join(os.getcwd(), 'sim')), (None, None, []))[2]:
-        histories.append(load(os.path.join(os.getcwd(),'sim', file)))
+    result_dir = os.path.join(os.getcwd(), 'sim')
+    for file in next(os.walk(result_dir), (None, None, []))[2]:
+        histories.append(load(os.path.join(result_dir, file)))
     
     return histories
 
