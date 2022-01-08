@@ -1,7 +1,7 @@
 from numpy.core.fromnumeric import size
 from erdbeermet.simulation import simulate
 from erdbeermet.simulation import load
-from erdbeermet.recognition import recognize
+from erdbeermet.recognition import recognize, alt_recognize
 from erdbeermet.visualize.BoxGraphVis import plot_box_graph
 from itertools import permutations
 import numpy as np
@@ -147,8 +147,9 @@ def handle_reconstruction_failure(rec_tree):
 
 
 def average_runtimes(sim_runtimes, rec_runtimes):
-    print(f'# sim runtimes: {len(sim_runtimes)}')
-    print(f'Average simulation time: {np.mean(sim_runtimes)}s')
+    if len(sim_runtimes) > 0:
+        print(f'# sim runtimes: {len(sim_runtimes)}')
+        print(f'Average simulation time: {np.mean(sim_runtimes)}s')
 
     print(f'# rec runtimes: {len(rec_runtimes)}')
     print(f'Average recognition runtime: {np.mean(rec_runtimes)}s')
