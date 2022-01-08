@@ -3,6 +3,7 @@ from erdbeermet.simulation import simulate
 from erdbeermet.simulation import load
 from erdbeermet.recognition import recognize
 from erdbeermet.visualize.BoxGraphVis import plot_box_graph
+from itertools import permutations
 import numpy as np
 import os
 import timeit
@@ -47,7 +48,7 @@ def get_simulations(import_from_file = False):
     else:
         return create_diff_simulations()
 
-def compare_first_leaves(history, rec_tree):
+def compare_first_leaves(history, candidate):
     first_leaves = history.history[:4]
 
     leaves_indices = []
@@ -56,13 +57,9 @@ def compare_first_leaves(history, rec_tree):
         leaves_indices.append(leaf[2])
 
     leaves_equal = False
-    for node in rec_tree.preorder():
-        if node.n == 4 and not node.info:
-            # print(
-            #     f'Candidate: {node.V}.......... Actual first 4 leaves: {leaves_indices}')
-
-            if (set(node.V) == set(leaves_indices)):
-                leaves_equal = True
+    if candidate.n == 4 and not candidate.info:
+        if (set(candidate.V) == set(leaves_indices)):
+            leaves_equal = True
 
     return leaves_equal
 
@@ -72,7 +69,7 @@ def divergence_measure(history, rec_tree):
     for node in rec_tree.preorder():
         if node.R_step:
             n = node.R_step
-            reconstructed_steps.append((n[0], n[1], n[2]))
+        reconstructed_steps.append((n[0], n[1], n[2]))
 
     true_steps = []
     for s in history.history:
@@ -88,14 +85,21 @@ def divergence_measure(history, rec_tree):
     return common_triple_cnt
 
 
-def recognize_histories(histories, first_candidate_only=True, print_info=False):
+def recognize_histories(histories, first_candidate_only=True, print_info=False, use_modified=False, b_unknown= False):
     runtimes = []
 
     for history in histories:
         start = timeit.default_timer()
-        rec_tree = recognize(
-            history.D, first_candidate_only=first_candidate_only, print_info=print_info)
 
+        if not b_unknown:
+            rec_tree = recognize(
+                history.D,first_candidate_only=first_candidate_only, print_info=print_info, B={0,1,2,3}, use_modified=use_modified)
+        else:
+            V = [i for i in range(history.D.shape[0])]
+            for x, y, z in permutations(V, 3):
+                rec_tree = recognize(
+                history.D,first_candidate_only=first_candidate_only, print_info=print_info, B={x,y,z}, use_modified=use_modified)
+        
         stop = timeit.default_timer()
         runtimes.append(stop - start)
 
@@ -111,7 +115,15 @@ def recognize_histories(histories, first_candidate_only=True, print_info=False):
 def handle_reconstruction_success(history, rec_tree):
     print('Is R-Map!')
 
-    leaves_equal = compare_first_leaves(history, rec_tree)
+    #select an candidate radomly
+    candidates = []
+    for node in rec_tree.preorder():
+        if node.n == 4 and not node.info:
+            candidates.append(node)
+    candidate = candidates[np.random.randint(len(candidates)-1)]
+    print(f'Possible R-Maps: {len(candidates)}')
+
+    leaves_equal = compare_first_leaves(history, candidate)
     print(f'Are first 4 simulation leaves and final 4-leaf map equal? {leaves_equal}')
 
     common_triple_cnt = divergence_measure(history, rec_tree)
@@ -145,8 +157,17 @@ def average_runtimes(sim_runtimes, rec_runtimes):
 def __main__():
     # histories, sim_runtimes = create_diff_simulations()
     histories, sim_runtimes = get_simulations(import_from_file=True)
-    rec_runtimes = recognize_histories(histories)
 
+    #WP1, WP2
+    rec_runtimes = recognize_histories(histories)
     average_runtimes(sim_runtimes, rec_runtimes)
+
+    #WP3
+    rec_runtimes = recognize_histories(histories, use_modified=True)
+    average_runtimes(sim_runtimes, rec_runtimes)
+    #WP3.1
+    rec_runtimes = recognize_histories(histories, use_modified=True, b_unknown=True)
+    average_runtimes(sim_runtimes, rec_runtimes)
+
 
 __main__()
