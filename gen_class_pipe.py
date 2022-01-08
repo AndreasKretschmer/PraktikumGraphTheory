@@ -21,7 +21,7 @@ def load_simulations_from_files():
     result_dir = os.path.join(os.getcwd(), 'sim')
     for file in next(os.walk(result_dir), (None, None, []))[2]:
         histories.append(load(os.path.join(result_dir, file)))
-    
+
     return histories
 
 def create_diff_simulations():
