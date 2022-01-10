@@ -1,7 +1,7 @@
 from numpy.core.fromnumeric import size
 from erdbeermet.simulation import simulate
 from erdbeermet.simulation import load
-from erdbeermet.recognition import recognize, alt_recognize
+from erdbeermet.recognition import recognize
 from erdbeermet.visualize.BoxGraphVis import plot_box_graph
 from itertools import permutations
 import numpy as np

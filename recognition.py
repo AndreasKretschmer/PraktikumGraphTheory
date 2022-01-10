@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from itertools import combinations, permutations
+import math
 import numpy as np
 
 from erdbeermet.tools.Tree import Tree, TreeNode
@@ -200,8 +201,9 @@ def _find_candidates(D, V, print_info, B={}, use_modified=False):
     if print_info: print(f'-----> n = {n}, V = {V} ---> Candidates')
     
     for x, y, z in permutations(V, 3):
-        #TODO skip if z is one of the first 4 leafs
-        if z in B:
+        #skip if z is one of the first 4 leafs
+        if (z in B) and use_modified:
+            print(f'skip{z}')
             continue
         
         # considering x < y suffices
@@ -230,8 +232,8 @@ def _find_candidates(D, V, print_info, B={}, use_modified=False):
             alpha[0] = _close_to_equal(alpha[0])
             
             if alpha[0] >= 0.0 and alpha[0] <= 1.0:
-                candidates.append((x, y, z, u_witness, alpha[0]))
                 deltas = _compute_deltas(V, D, alpha[0], x, y, z, u_witness)
+                candidates.append((x, y, z, u_witness, alpha[0],(deltas)))
                 
                 if print_info: 
                     print(f'({x}, {y}: {z}) alpha={alpha}', end='   ')
@@ -401,6 +403,140 @@ def recognize(D, first_candidate_only=False, print_info=False, B={}, use_modifie
                 parent.add_child(child)
                 
                 deltas = _compute_deltas(V, D, alpha, x, y, z, u_witness)
+                
+                if print_info:
+                    print('({}, {}: {}) alpha={:.5f}'.format(x, y, z, alpha),
+                          end='   ')
+                    print('δx = {:.3f}, δy = {:.3f}, '\
+                          'δz = {:.3f}, dxy = {:.3f}'.format(deltas[2],
+                                                             deltas[3],
+                                                             deltas[0],
+                                                             deltas[1]))
+                
+                if not _all_non_negative(deltas):
+                    if print_info: print('         |___ negative δ/dxy')
+                    child.info = 'negative delta/dxy'
+                    continue
+                
+                D_copy = _matrix_without_index(D, V.index(z))
+                _update_matrix(V_copy, D_copy, x, y, deltas[2], deltas[3])
+                child.D = D_copy
+                
+                still_metric, metric_info = is_pseudometric(D_copy,
+                                                            return_info=True,
+                                                            V=V_copy)
+                
+                if not still_metric:
+                    if print_info: print( '         |___ no pseudometric')
+                    if print_info: print(f'         |___ {metric_info}')
+                    child.info = 'no pseudometric'
+                    continue
+                
+                found_valid = True
+                if print_info: print(f'         |___ STACKED {V_copy}')
+                stack.append(child)
+                
+                # for n = 5 always check all candidates
+                if first_candidate_only and n > 5:
+                    break
+                
+            if not candidates or not found_valid:
+                parent.info = 'no candidate'
+                
+        else:
+            if print_info: print(f'-----> n = {n} R-map test')
+            if recognize4_matrix_only(D):
+                if print_info: print(f'SUCCESS on {V}')
+                parent.valid_ways = 1
+            else:
+                if print_info: print(f'NO R-MAP on {V}')
+                parent.info = 'spikes too short'
+    
+    _finalize_tree(recognition_tree)    
+    return recognition_tree
+
+def alt_recognize(D, first_candidate_only=False, print_info=False, B={}, use_modified=False):
+    """Recognition of type R matrices.
+    
+    Parameters
+    ----------
+    D : 2-dimensional numpy array
+        A distance matrix.
+    first_candidate_only : bool, optional
+        If True, only consider the first found candidate for a merge event.
+        The default is False.
+    print_info : bool, True
+        If True, print the recognition history. The default is False.
+    
+    Returns
+    -------
+    Tree
+        The recognition tree.
+    
+    See also
+    --------
+    tools.Tree
+    """
+    
+    n = D.shape[0]
+    V = [i for i in range(n)]
+    
+    recognition_tree = Tree(TreeNode(n, V, D=D))
+    stack = []
+    
+    # trivial failure if not a pseudometric
+    if not is_pseudometric(D):
+        if print_info: print('no pseudometric')
+        recognition_tree.root.info = 'no pseudometric'
+    
+    # every pseudometric is additve and thus also an R matrix
+    elif n <= 3:
+        if print_info: print(print(f'SUCCESS on {V}'))
+        recognition_tree.root.valid_ways = 1
+    
+    # otherwise start the recognition algorithm
+    else:
+        stack.append(recognition_tree.root)
+    
+    
+    while stack:
+        
+        parent = stack.pop()
+        V, D = parent.V, parent.D
+        n = len(V)
+        
+        if n > 4:
+            
+            candidates = _find_candidates(D, V, print_info, B, use_modified=use_modified)
+            
+            found_valid = False
+            
+            if print_info: 
+                print(f'-----> n = {n}, V = {V} ---> R-steps actually carried out')
+
+            min_deltas = (math.inf, math.inf, math.inf)
+            min_candidates = []
+            for candidate in candidates:
+                x, y, z, u_witness, alpha = candidate
+                delta_x,_,delta_y,delta_z = _compute_deltas(V, D, alpha, x, y, z, u_witness)
+                deltas = (delta_x, delta_y, delta_z)
+
+                if deltas < min_deltas:
+                    min_candidates.clear()
+                    min_deltas = deltas
+                    min_candidates.append(candidate)
+
+                elif deltas == min_deltas:
+                    min_candidates.append(candidate)
+
+            for x, y, z, u_witness, alpha in min_candidates:
+                V_copy = V.copy()
+                V_copy.remove(z)
+                
+                child = TreeNode(n-1, V_copy, R_step=(x, y, z, alpha))
+                parent.add_child(child)
+                
+                deltas  = _compute_deltas(V, D, alpha, x, y, z, u_witness)
                 
                 if print_info:
                     print('({}, {}: {}) alpha={:.5f}'.format(x, y, z, alpha),
