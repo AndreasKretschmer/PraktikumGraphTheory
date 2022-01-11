@@ -5,6 +5,7 @@ import math
 import numpy as np
 
 from erdbeermet.tools.Tree import Tree, TreeNode
+from numpy.ma.core import minimum_fill_value
 
 
 __author__ = 'David Schaller'
@@ -510,32 +511,14 @@ def alt_recognize(D, first_candidate_only=False, print_info=False, B={}, use_mod
 
             found_valid = False
 
-            min_deltas = (math.inf, math.inf, math.inf)
-
-            delta_candidates = []
-            min_candidates = []
-            for candidate in candidates:
-                x, y, z, u_witness, alpha = candidate
-                delta_x,_,delta_y,delta_z = _compute_deltas(V, D, alpha, x, y, z, u_witness)
-                deltas = (delta_x, delta_y, delta_z)
-                delta_candidates.append((candidate, deltas))
-
-                if deltas < min_deltas:
-                    min_candidates.clear()
-                    min_deltas = deltas
-                    min_candidates.append(candidate)
-
-                elif deltas == min_deltas:
-                    min_candidates.append(candidate)
-
-            print(f'min candidates: {min_candidates} {min_deltas}')
-            for candidate in delta_candidates:
-                print(candidate)
-                print()
+            if n > 5:
+                candidates = get_min_candidates(V, D, candidates)
+                if len(candidates) < 1:
+                    parent.info = 'no candidate'
 
             if print_info:
                 print(f'-----> n = {n}, V = {V} ---> R-steps actually carried out')
-            for x, y, z, u_witness, alpha in min_candidates:
+            for x, y, z, u_witness, alpha in candidates:
                 V_copy = V.copy()
                 V_copy.remove(z)
 
@@ -594,3 +577,95 @@ def alt_recognize(D, first_candidate_only=False, print_info=False, B={}, use_mod
 
     _finalize_tree(recognition_tree)
     return recognition_tree
+
+def get_min_candidates(V, D, candidates):
+    all_nodes = []
+
+    for candidate in candidates:
+        x, y, z, u_witness, alpha = candidate
+        all_nodes.append(x, y, z)
+        setattr(candidate, 'circle', False)
+
+    # remove duplicates
+    all_nodes = list(set(all_nodes))
+
+    min_candidates = []
+
+    for node in all_nodes:
+        comparison_candidates = []
+
+        for candidate in candidates:
+            x, y, z, u_witness, alpha = candidate
+
+            if x == node or y == node or z == node:
+                comparison_candidates.append(candidate)
+
+        min_candidate = comparison_candidates[0]
+        min_candidate_index = 0
+
+        if len(comparison_candidates) == 1:
+            min_candidates.append(min_candidate)
+
+        else:
+            for index, candidate in enumerate(comparison_candidates):
+                x, y, z, u_witness, alpha = min_candidate
+                min_delta_x, _, min_delta_y, min_delta_z = _compute_deltas(
+                    V, D, alpha, x, y, z, u_witness)
+
+                x, y, z, u_witness, alpha = candidate
+                delta_x, _, delta_y, delta_z = _compute_deltas(
+                    V, D, alpha, x, y, z, u_witness)
+
+                comp_value_tuples = []
+
+                for min_property, min_value in vars(min_candidate).items():
+                    for property, value in vars(candidate).items():
+                        if (min_value == value):
+                            first_value = math.inf
+                            second_value = math.inf
+
+                            if "x" in str(min_property):
+                                first_value = min_delta_x
+                            elif "y" in str(min_property):
+                                first_value = min_delta_y
+                            elif "z" in str(min_property):
+                                first_value = min_delta_z
+
+                            if "x" in str(property):
+                                second_value = delta_x
+                            elif "y" in str(property):
+                                second_value = delta_y
+                            elif "z" in str(property):
+                                second_value = delta_z
+
+                            comp_value_tuples.append(
+                                (first_value, second_value))
+
+                if len(comp_value_tuples) == 1:
+                    # if a < b und b < a, nicht sicher ob es wirklich passieren kann
+                    if comp_value_tuples[0][0] > comp_value_tuples[0][1] and comp_value_tuples[0][0] <= comp_value_tuples[0][1]:
+                        comparison_candidates[min_candidate_index].circle = True
+                        comparison_candidates[index].circle = True
+
+                    elif comp_value_tuples[0][0] > comp_value_tuples[0][1]:
+                        min_candidate = candidate
+                        min_candidate_index = index
+
+                if len(comp_value_tuples) == 2:
+                    if comp_value_tuples[0][0] > comp_value_tuples[0][1] and comp_value_tuples[1][0] > comp_value_tuples[1][1]:
+                        min_candidate = candidate
+                        min_candidate_index = index
+
+
+                    elif not(comp_value_tuples[0][0] <= comp_value_tuples[0][1] and comp_value_tuples[1][0] <= comp_value_tuples[1][1]):
+                        comparison_candidates[min_candidate_index].circle = True
+                        comparison_candidates[index].circle = True
+
+            min_candidates.append(min_candidate)
+
+    # remove duplicates
+    min_candidates = list(set(min_candidates))
+    # filter circles
+    min_candidates = filter(lambda x: x.circle == False, min_candidates)
+
+    return min_candidates
