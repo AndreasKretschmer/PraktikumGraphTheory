@@ -5,6 +5,7 @@ import math
 import numpy as np
 
 from erdbeermet.tools.Tree import Tree, TreeNode
+from numpy.ma.core import minimum_fill_value
 
 
 __author__ = 'David Schaller'
@@ -510,32 +511,14 @@ def alt_recognize(D, first_candidate_only=False, print_info=False, B={}, use_mod
 
             found_valid = False
 
-            min_deltas = (math.inf, math.inf, math.inf)
-
-            delta_candidates = []
-            min_candidates = []
-            for candidate in candidates:
-                x, y, z, u_witness, alpha = candidate
-                delta_x,_,delta_y,delta_z = _compute_deltas(V, D, alpha, x, y, z, u_witness)
-                deltas = (delta_x, delta_y, delta_z)
-                delta_candidates.append((candidate, deltas))
-
-                if deltas < min_deltas:
-                    min_candidates.clear()
-                    min_deltas = deltas
-                    min_candidates.append(candidate)
-
-                elif deltas == min_deltas:
-                    min_candidates.append(candidate)
-
-            print(f'min candidates: {min_candidates} {min_deltas}')
-            for candidate in delta_candidates:
-                print(candidate)
-                print()
+            if n > 5:
+                candidates = get_min_candidates(V, D, candidates)
+                if len(candidates) < 1:
+                    parent.info = 'no candidate'
 
             if print_info:
                 print(f'-----> n = {n}, V = {V} ---> R-steps actually carried out')
-            for x, y, z, u_witness, alpha in min_candidates:
+            for x, y, z, u_witness, alpha in candidates:
                 V_copy = V.copy()
                 V_copy.remove(z)
 
@@ -595,136 +578,94 @@ def alt_recognize(D, first_candidate_only=False, print_info=False, B={}, use_mod
     _finalize_tree(recognition_tree)
     return recognition_tree
 
-def alt_recognize(D, first_candidate_only=False, print_info=False, B={}, use_modified=False):
-    """Recognition of type R matrices.
-    
-    Parameters
-    ----------
-    D : 2-dimensional numpy array
-        A distance matrix.
-    first_candidate_only : bool, optional
-        If True, only consider the first found candidate for a merge event.
-        The default is False.
-    print_info : bool, True
-        If True, print the recognition history. The default is False.
-    
-    Returns
-    -------
-    Tree
-        The recognition tree.
-    
-    See also
-    --------
-    tools.Tree
-    """
-    
-    n = D.shape[0]
-    V = [i for i in range(n)]
-    
-    recognition_tree = Tree(TreeNode(n, V, D=D))
-    stack = []
-    
-    # trivial failure if not a pseudometric
-    if not is_pseudometric(D):
-        if print_info: print('no pseudometric')
-        recognition_tree.root.info = 'no pseudometric'
-    
-    # every pseudometric is additve and thus also an R matrix
-    elif n <= 3:
-        if print_info: print(print(f'SUCCESS on {V}'))
-        recognition_tree.root.valid_ways = 1
-    
-    # otherwise start the recognition algorithm
-    else:
-        stack.append(recognition_tree.root)
-    
-    
-    while stack:
-        
-        parent = stack.pop()
-        V, D = parent.V, parent.D
-        n = len(V)
-        
-        if n > 4:
-            
-            candidates = _find_candidates(D, V, print_info, B, use_modified=use_modified)
-            
-            found_valid = False
-            
-            if print_info: 
-                print(f'-----> n = {n}, V = {V} ---> R-steps actually carried out')
+def get_min_candidates(V, D, candidates):
+    all_nodes = []
 
-            min_deltas = (math.inf, math.inf, math.inf)
-            min_candidates = []
-            for candidate in candidates:
-                x, y, z, u_witness, alpha = candidate
-                delta_x,_,delta_y,delta_z = _compute_deltas(V, D, alpha, x, y, z, u_witness)
-                deltas = (delta_x, delta_y, delta_z)
+    for candidate in candidates:
+        x, y, z, u_witness, alpha = candidate
+        all_nodes.append(x, y, z)
+        setattr(candidate, 'circle', False)
 
-                if deltas < min_deltas:
-                    min_candidates.clear()
-                    min_deltas = deltas
-                    min_candidates.append(candidate)
+    # remove duplicates
+    all_nodes = list(set(all_nodes))
 
-                elif deltas == min_deltas:
-                    min_candidates.append(candidate)
+    min_candidates = []
 
-            for x, y, z, u_witness, alpha in min_candidates:
-                V_copy = V.copy()
-                V_copy.remove(z)
-                
-                child = TreeNode(n-1, V_copy, R_step=(x, y, z, alpha))
-                parent.add_child(child)
-                
-                deltas  = _compute_deltas(V, D, alpha, x, y, z, u_witness)
-                
-                if print_info:
-                    print('({}, {}: {}) alpha={:.5f}'.format(x, y, z, alpha),
-                          end='   ')
-                    print('δx = {:.3f}, δy = {:.3f}, '\
-                          'δz = {:.3f}, dxy = {:.3f}'.format(deltas[2],
-                                                             deltas[3],
-                                                             deltas[0],
-                                                             deltas[1]))
-                
-                if not _all_non_negative(deltas):
-                    if print_info: print('         |___ negative δ/dxy')
-                    child.info = 'negative delta/dxy'
-                    continue
-                
-                D_copy = _matrix_without_index(D, V.index(z))
-                _update_matrix(V_copy, D_copy, x, y, deltas[2], deltas[3])
-                child.D = D_copy
-                
-                still_metric, metric_info = is_pseudometric(D_copy,
-                                                            return_info=True,
-                                                            V=V_copy)
-                
-                if not still_metric:
-                    if print_info: print( '         |___ no pseudometric')
-                    if print_info: print(f'         |___ {metric_info}')
-                    child.info = 'no pseudometric'
-                    continue
-                
-                found_valid = True
-                if print_info: print(f'         |___ STACKED {V_copy}')
-                stack.append(child)
-                
-                # for n = 5 always check all candidates
-                if first_candidate_only and n > 5:
-                    break
-                
-            if not candidates or not found_valid:
-                parent.info = 'no candidate'
-                
+    for node in all_nodes:
+        comparison_candidates = []
+
+        for candidate in candidates:
+            x, y, z, u_witness, alpha = candidate
+
+            if x == node or y == node or z == node:
+                comparison_candidates.append(candidate)
+
+        min_candidate = comparison_candidates[0]
+        min_candidate_index = 0
+
+        if len(comparison_candidates) == 1:
+            min_candidates.append(min_candidate)
+
         else:
-            if print_info: print(f'-----> n = {n} R-map test')
-            if recognize4_matrix_only(D):
-                if print_info: print(f'SUCCESS on {V}')
-                parent.valid_ways = 1
-            else:
-                if print_info: print(f'NO R-MAP on {V}')
-                parent.info = 'spikes too short'
-    
-    _finalize_tree(recognition_tree)    
-    return recognition_tree
+            for index, candidate in enumerate(comparison_candidates):
+                x, y, z, u_witness, alpha = min_candidate
+                min_delta_x, _, min_delta_y, min_delta_z = _compute_deltas(
+                    V, D, alpha, x, y, z, u_witness)
+
+                x, y, z, u_witness, alpha = candidate
+                delta_x, _, delta_y, delta_z = _compute_deltas(
+                    V, D, alpha, x, y, z, u_witness)
+
+                comp_value_tuples = []
+
+                for min_property, min_value in vars(min_candidate).items():
+                    for property, value in vars(candidate).items():
+                        if (min_value == value):
+                            first_value = math.inf
+                            second_value = math.inf
+
+                            if "x" in str(min_property):
+                                first_value = min_delta_x
+                            elif "y" in str(min_property):
+                                first_value = min_delta_y
+                            elif "z" in str(min_property):
+                                first_value = min_delta_z
+
+                            if "x" in str(property):
+                                second_value = delta_x
+                            elif "y" in str(property):
+                                second_value = delta_y
+                            elif "z" in str(property):
+                                second_value = delta_z
+
+                            comp_value_tuples.append(
+                                (first_value, second_value))
+
+                if len(comp_value_tuples) == 1:
+                    # if a < b und b < a, nicht sicher ob es wirklich passieren kann
+                    if comp_value_tuples[0][0] > comp_value_tuples[0][1] and comp_value_tuples[0][0] <= comp_value_tuples[0][1]:
+                        comparison_candidates[min_candidate_index].circle = True
+                        comparison_candidates[index].circle = True
+
+                    elif comp_value_tuples[0][0] > comp_value_tuples[0][1]:
+                        min_candidate = candidate
+                        min_candidate_index = index
+
+                if len(comp_value_tuples) == 2:
+                    if comp_value_tuples[0][0] > comp_value_tuples[0][1] and comp_value_tuples[1][0] > comp_value_tuples[1][1]:
+                        min_candidate = candidate
+                        min_candidate_index = index
+
+
+                    elif not(comp_value_tuples[0][0] <= comp_value_tuples[0][1] and comp_value_tuples[1][0] <= comp_value_tuples[1][1]):
+                        comparison_candidates[min_candidate_index].circle = True
+                        comparison_candidates[index].circle = True
+
+            min_candidates.append(min_candidate)
+
+    # remove duplicates
+    min_candidates = list(set(min_candidates))
+    # filter circles
+    min_candidates = filter(lambda x: x.circle == False, min_candidates)
+
+    return min_candidates
