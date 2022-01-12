@@ -204,7 +204,8 @@ def _find_candidates(D, V, print_info, B={}, use_modified=False):
     for x, y, z in permutations(V, 3):
         #skip if z is one of the first 4 leafs
         if (z in B) and use_modified:
-            print(f'skip{z}')
+            if print_info:
+                print(f'skip{z}')
             continue
 
         # considering x < y suffices
@@ -233,6 +234,7 @@ def _find_candidates(D, V, print_info, B={}, use_modified=False):
             alpha[0] = _close_to_equal(alpha[0])
 
             if alpha[0] >= 0.0 and alpha[0] <= 1.0:
+                candidates.append((x, y, z, u_witness, alpha[0]))
                 deltas = _compute_deltas(V, D, alpha[0], x, y, z, u_witness)
 
                 if print_info:
@@ -583,8 +585,10 @@ def get_min_candidates(V, D, candidates):
 
     for candidate in candidates:
         x, y, z, u_witness, alpha = candidate
-        all_nodes.append(x, y, z)
-        setattr(candidate, 'circle', False)
+        all_nodes.append(x)
+        all_nodes.append(y)
+        all_nodes.append(z)
+        # setattr(candidate, 'circle', False)
 
     # remove duplicates
     all_nodes = list(set(all_nodes))
@@ -593,10 +597,12 @@ def get_min_candidates(V, D, candidates):
 
     for node in all_nodes:
         comparison_candidates = []
-
+        print(f'Node: {node}')
         for candidate in candidates:
             x, y, z, u_witness, alpha = candidate
-
+            print(f'x: {x}')
+            print(f'y: {y}')
+            print(f'z: {z}')
             if x == node or y == node or z == node:
                 comparison_candidates.append(candidate)
 
@@ -605,10 +611,10 @@ def get_min_candidates(V, D, candidates):
 
         if len(comparison_candidates) == 1:
             min_candidates.append(min_candidate)
-
         else:
             for index, candidate in enumerate(comparison_candidates):
                 x, y, z, u_witness, alpha = min_candidate
+
                 min_delta_x, _, min_delta_y, min_delta_z = _compute_deltas(
                     V, D, alpha, x, y, z, u_witness)
 
@@ -644,8 +650,9 @@ def get_min_candidates(V, D, candidates):
                 if len(comp_value_tuples) == 1:
                     # if a < b und b < a, nicht sicher ob es wirklich passieren kann
                     if comp_value_tuples[0][0] > comp_value_tuples[0][1] and comp_value_tuples[0][0] <= comp_value_tuples[0][1]:
-                        comparison_candidates[min_candidate_index].circle = True
-                        comparison_candidates[index].circle = True
+                        # comparison_candidates[min_candidate_index].circle = True
+                        # comparison_candidates[index].circle = True
+                        continue
 
                     elif comp_value_tuples[0][0] > comp_value_tuples[0][1]:
                         min_candidate = candidate
@@ -658,14 +665,19 @@ def get_min_candidates(V, D, candidates):
 
 
                     elif not(comp_value_tuples[0][0] <= comp_value_tuples[0][1] and comp_value_tuples[1][0] <= comp_value_tuples[1][1]):
-                        comparison_candidates[min_candidate_index].circle = True
-                        comparison_candidates[index].circle = True
+                        # comparison_candidates[min_candidate_index].circle = True
+                        # comparison_candidates[index].circle = True
+                        continue
 
             min_candidates.append(min_candidate)
 
     # remove duplicates
     min_candidates = list(set(min_candidates))
     # filter circles
-    min_candidates = filter(lambda x: x.circle == False, min_candidates)
+    # result = []
+    # for x in min_candidates:
+    #     if x.circle == False:
+    #         result.append(x)
+    # min_candidates = filter(lambda x: x.circle == False, min_candidates)
 
     return min_candidates
