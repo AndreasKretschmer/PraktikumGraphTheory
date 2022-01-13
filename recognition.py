@@ -509,7 +509,7 @@ def alt_recognize(D, first_candidate_only=False, print_info=False, B={}, use_mod
 
         if n > 4:
 
-            candidates = _find_candidates(D, V, print_info, B, use_modified=use_modified)
+            candidates = _find_candidates(D, V, print_info)
 
             found_valid = False
 
@@ -678,6 +678,6 @@ def get_min_candidates(V, D, candidates):
     # for x in min_candidates:
     #     if x.circle == False:
     #         result.append(x)
-    # min_candidates = filter(lambda x: x.circle == False, min_candidates)
+    # min_candidates = list(filter(lambda x: x.circle == False, min_candidates))
 
     return min_candidates
