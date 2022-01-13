@@ -1,3 +1,4 @@
+from time import time
 from numpy.core.fromnumeric import size
 from erdbeermet.simulation import simulate
 from erdbeermet.simulation import load
@@ -31,7 +32,7 @@ def load_simulations_from_files():
 def create_diff_simulations():
     histories = []
     runtimes = []
-    for i in range(15):
+    for i in range(1):
         for bool in (True, False):
             for bool2 in (True, False):
                 start = timeit.default_timer()
@@ -88,39 +89,60 @@ def divergence_measure(history, rec_tree):
     return common_triple_cnt
 
 
-def recognize_histories(histories, first_candidate_only=True, print_info=False, use_modified=False, b_unknown= False):
+def recognize_histories(histories, first_candidate_only=True, print_info=False, use_modified=False, Mode=''):
     runtimes = []
     n_cnt = 0
-    errors = 0
+    errors = []
+    common_triplets_cnt_sum = []
+    leaves_equal_sum = []
 
     for history in histories:
         n_cnt += 1
-        if not b_unknown:
+        if (Mode=='WP3'):
             start = timeit.default_timer()
             rec_tree = recognize(history.D, first_candidate_only=first_candidate_only, print_info=print_info, B={0,1,2,3}, use_modified=use_modified)
             stop = timeit.default_timer()
             runtimes.append(stop - start)
-            errors += handle_reconstruction_result(rec_tree, history)
-        else:
+            error, leaves_equal, common_triplets_cnt = handle_reconstruction_result(rec_tree, history)
+            errors.append(error)
+            common_triplets_cnt_sum.append(common_triplets_cnt)
+            leaves_equal_sum.append(leaves_equal)
+
+        elif (Mode=='WP31'):
             V = [i for i in range(history.D.shape[0])]
+            start = timeit.default_timer()
+            rec_tree = any
             for x, y, z in permutations(V, 3):
-                start = timeit.default_timer()
                 rec_tree = recognize(history.D ,first_candidate_only=first_candidate_only, print_info=print_info, B={x,y,z}, use_modified=use_modified)
-                stop = timeit.default_timer()
-                runtimes.append(stop - start)
-                errors += handle_reconstruction_result(rec_tree, history)
-    
-    return runtimes, n_cnt, errors
+                if (rec_tree.root.valid_ways>0): break
+            stop = timeit.default_timer()
+            runtimes.append(stop - start)
+            error, leaves_equal, common_triplets_cnt = handle_reconstruction_result(rec_tree, history)
+            errors.append(error)
+            common_triplets_cnt_sum.append(common_triplets_cnt)
+            leaves_equal_sum.append(leaves_equal)
+
+        elif (Mode=='WP4'):
+            start = timeit.default_timer()
+            rec_tree = alt_recognize(history.D)
+            stop = timeit.default_timer()
+            runtimes.append(stop - start)
+            error, leaves_equal, common_triplets_cnt = handle_reconstruction_result(rec_tree, history)
+            errors.append(error)
+            common_triplets_cnt_sum.append(common_triplets_cnt)
+            leaves_equal_sum.append(leaves_equal)
+
+    return runtimes, n_cnt, errors, leaves_equal_sum, common_triplets_cnt_sum
 
 def handle_reconstruction_result(rec_tree, history):
     is_rmap = (rec_tree.root.valid_ways > 0)
 
     if is_rmap:
-        handle_reconstruction_success(history, rec_tree)
-        return 0
+        leaves_equal, common_triplets_cnt = handle_reconstruction_success(history, rec_tree)
+        return 0, leaves_equal, common_triplets_cnt
     else:
         handle_reconstruction_failure(rec_tree)
-        return 1
+        return 1, 0, 0
 
 def handle_reconstruction_success(history, rec_tree, print_info=False):
     if print_info: print('Is R-Map!')
@@ -136,19 +158,21 @@ def handle_reconstruction_success(history, rec_tree, print_info=False):
     else:
         candidate = candidates[0]
 
+    leaves_equal = compare_first_leaves(history, candidate)
+    common_triple_cnt = divergence_measure(history, rec_tree)
     if print_info:
         print(f'Possible R-Maps: {len(candidates)}')
-
-        leaves_equal = compare_first_leaves(history, candidate)
         print(f'Are first 4 simulation leaves and final 4-leaf map equal? {leaves_equal}')
 
-        common_triple_cnt = divergence_measure(history, rec_tree)
         print(f'Common triples: {common_triple_cnt}')
-
         print('\n')
 
+    return leaves_equal, common_triple_cnt
+
 def handle_reconstruction_failure(rec_tree, print_info=False):
-    print('reconstruction failed')
+    if print_info:
+        print('reconstruction failed')
+
     for node in rec_tree.preorder():
         V, D, R_step = node.V, node.D, node.R_step
         if print_info:
@@ -172,32 +196,37 @@ def average_runtimes(sim_runtimes, rec_runtimes):
     print(f'# rec runtimes: {len(rec_runtimes)}')
     print(f'Average recognition runtime: {np.mean(rec_runtimes)}s')
 
-def reconstruction_success_errors(n, err):
+def reconstruction_success_errors(n, err, leaves_equal, common_triplet_cnt):
     print('\n')
-    print(f'# of errors: {err}')
-    print(f'# of succesful steps: {n-err}')
-    print(f'succesfull in %: {((n-err)/n)*100}')
+    print('----------------------------------------')
+    print(f'# of errors: {np.sum(err)}')
+    print(f'# of succesful steps: {n-np.sum(err)}')
+    print(f'succesfull in %: {((n-np.sum(err))/n)*100}')
+    print(f'Average common triplets count: {np.mean(common_triplet_cnt)}')
+    print(f'Sum of leaves rmap equal to first leaves: {np.sum(leaves_equal)}')
+    print('----------------------------------------')
 
 
 def __main__():
-    histories, sim_runtimes = get_simulations(import_from_file=True)
+    histories, sim_runtimes = get_simulations(import_from_file=False)
 
     #WP1, WP2
-    rec_runtimes, nwp2, err_wp2 = recognize_histories(histories)
+    rec_runtimes, nwp2, err_wp2, leaves_equal_sum_wp2, common_triplets_cnt_sum_wp2 = recognize_histories(histories, Mode='WP3')
     average_runtimes(sim_runtimes, rec_runtimes)
-    reconstruction_success_errors(nwp2, err_wp2)
+    reconstruction_success_errors(nwp2, err_wp2, leaves_equal_sum_wp2, common_triplets_cnt_sum_wp2)
 
     # #WP3
-    rec_runtimes, n_wp3, err_wp3 = recognize_histories(histories, use_modified=True)
+    rec_runtimes, n_wp3, err_wp3,leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3 = recognize_histories(histories, use_modified=True, Mode='WP3')
     average_runtimes(sim_runtimes, rec_runtimes)
-    reconstruction_success_errors(n_wp3, err_wp3)
+    reconstruction_success_errors(n_wp3, err_wp3, leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3)
     # #WP3.1
-    rec_runtimes, n_wp3_1, err_wp3_1 = recognize_histories(histories, use_modified=True, b_unknown=True)
+    rec_runtimes, n_wp3_1, err_wp3_1, leaves_equal_sum_wp3_1, common_triplets_cnt_sum_wp3_1 = recognize_histories(histories, use_modified=True, Mode='WP31')
     average_runtimes(sim_runtimes, rec_runtimes)
-    reconstruction_success_errors(n_wp3_1, err_wp3_1)
+    reconstruction_success_errors(n_wp3_1, err_wp3_1, leaves_equal_sum_wp3_1, common_triplets_cnt_sum_wp3_1)
 
-    # #WP4
-    for history in histories:
-        rec_tree = alt_recognize(history.D)
+    #WP4
+    rec_runtimes, n_wp4, err_wp4, leaves_equal_sum_wp4, common_triplets_cnt_sum_wp4 = recognize_histories(histories, use_modified=True, Mode='WP4')
+    average_runtimes(sim_runtimes, rec_runtimes)
+    reconstruction_success_errors(n_wp4, err_wp4, leaves_equal_sum_wp4, common_triplets_cnt_sum_wp4)
 
 __main__()

@@ -597,12 +597,8 @@ def get_min_candidates(V, D, candidates):
 
     for node in all_nodes:
         comparison_candidates = []
-        print(f'Node: {node}')
         for candidate in candidates:
             x, y, z, u_witness, alpha = candidate
-            print(f'x: {x}')
-            print(f'y: {y}')
-            print(f'z: {z}')
             if x == node or y == node or z == node:
                 comparison_candidates.append(candidate)
 
@@ -614,6 +610,10 @@ def get_min_candidates(V, D, candidates):
         else:
             for index, candidate in enumerate(comparison_candidates):
                 x, y, z, u_witness, alpha = min_candidate
+                # um zu schauen, ob er jemals hier in den zweig läuft
+                print(f'x: {x}')
+                print(f'y: {y}')
+                print(f'z: {z}')
 
                 min_delta_x, _, min_delta_y, min_delta_z = _compute_deltas(
                     V, D, alpha, x, y, z, u_witness)
