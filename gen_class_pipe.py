@@ -31,20 +31,15 @@ def load_simulations_from_files():
 
 def create_diff_simulations():
     histories = []
-    runtimes = []
-    for i in range(1):
+    for i in range(5000):
         for bool in (True, False):
             for bool2 in (True, False):
-                start = timeit.default_timer()
                 size = np.random.randint(8, 10)
                 history = simulate(size, branching_prob=0.0, circular=bool, clocklike=bool2)
                 histories.append(history)
-
-                stop = timeit.default_timer()
-                runtimes.append(stop - start)
                 write_simulation_to_file(bool, bool2, size, history, i)
 
-    return histories, runtimes
+    return histories
 
 def get_simulations(import_from_file = False):
     if import_from_file:
@@ -187,12 +182,8 @@ def handle_reconstruction_failure(rec_tree, print_info=False):
             # plot_box_graph(D, labels=V)
 
 
-def average_runtimes(sim_runtimes, rec_runtimes):
+def average_runtimes(rec_runtimes):
     print('\n')
-    if len(sim_runtimes) > 0:
-        print(f'# sim runtimes: {len(sim_runtimes)}')
-        print(f'Average simulation time: {np.mean(sim_runtimes)}s')
-
     print(f'# rec runtimes: {len(rec_runtimes)}')
     print(f'Average recognition runtime: {np.mean(rec_runtimes)}s')
 
@@ -208,25 +199,37 @@ def reconstruction_success_errors(n, err, leaves_equal, common_triplet_cnt):
 
 
 def __main__():
-    histories, sim_runtimes = get_simulations(import_from_file=False)
+    histories = get_simulations(import_from_file=False)
 
     #WP1, WP2
-    rec_runtimes, nwp2, err_wp2, leaves_equal_sum_wp2, common_triplets_cnt_sum_wp2 = recognize_histories(histories, Mode='WP3')
-    average_runtimes(sim_runtimes, rec_runtimes)
-    reconstruction_success_errors(nwp2, err_wp2, leaves_equal_sum_wp2, common_triplets_cnt_sum_wp2)
+    rec_runtimes, n_wp3, err_wp3,leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3 = recognize_histories(histories, Mode='WP3')
+    average_runtimes(rec_runtimes)
+    reconstruction_success_errors(n_wp3, err_wp3, leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3)
+    rec_runtimes = []
+    err_wp3=[]
+    leaves_equal_sum_wp3=[]
+    common_triplets_cnt_sum_wp3=[]
 
     # #WP3
     rec_runtimes, n_wp3, err_wp3,leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3 = recognize_histories(histories, use_modified=True, Mode='WP3')
-    average_runtimes(sim_runtimes, rec_runtimes)
+    average_runtimes(rec_runtimes)
     reconstruction_success_errors(n_wp3, err_wp3, leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3)
+    rec_runtimes = []
+    err_wp3=[]
+    leaves_equal_sum_wp3=[]
+    common_triplets_cnt_sum_wp3=[]
     # #WP3.1
-    rec_runtimes, n_wp3_1, err_wp3_1, leaves_equal_sum_wp3_1, common_triplets_cnt_sum_wp3_1 = recognize_histories(histories, use_modified=True, Mode='WP31')
-    average_runtimes(sim_runtimes, rec_runtimes)
-    reconstruction_success_errors(n_wp3_1, err_wp3_1, leaves_equal_sum_wp3_1, common_triplets_cnt_sum_wp3_1)
+    rec_runtimes, n_wp3, err_wp3,leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3 = recognize_histories(histories, use_modified=True, Mode='WP31')
+    average_runtimes(rec_runtimes)
+    reconstruction_success_errors(n_wp3, err_wp3, leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3)
+    rec_runtimes = []
+    err_wp3=[]
+    leaves_equal_sum_wp3=[]
+    common_triplets_cnt_sum_wp3=[]
 
     #WP4
-    rec_runtimes, n_wp4, err_wp4, leaves_equal_sum_wp4, common_triplets_cnt_sum_wp4 = recognize_histories(histories, use_modified=True, Mode='WP4')
-    average_runtimes(sim_runtimes, rec_runtimes)
-    reconstruction_success_errors(n_wp4, err_wp4, leaves_equal_sum_wp4, common_triplets_cnt_sum_wp4)
+    rec_runtimes, n_wp3, err_wp3,leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3 = recognize_histories(histories, use_modified=True, Mode='WP4')
+    average_runtimes(rec_runtimes)
+    reconstruction_success_errors(n_wp3, err_wp3, leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3)
 
 __main__()

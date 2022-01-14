@@ -1,0 +1,42 @@
+WP1,2
+# sim runtimes: 20000
+Average simulation time: 0.001196387710000028s  
+# rec runtimes: 20000
+Average recognition runtime: 0.5118025768749992s
+
+
+----------------------------------------        
+# of errors: 10
+# of succesful steps: 19990
+succesfull in %: 99.95
+Average common triplets count: 2.41835
+Sum of leaves rmap equal to first leaves: 1660
+----------------------------------------
+
+WP3:
+# rec runtimes: 20000
+Average recognition runtime: 0.2746367486350012s
+
+
+----------------------------------------
+# of errors: 0
+# of succesful steps: 20000
+succesfull in %: 100.0
+Average common triplets count: 2.25445
+Sum of leaves rmap equal to first leaves: 0
+----------------------------------------
+
+WP3.1
+# rec runtimes: 20000
+Average recognition runtime: 0.21630772215999686s
+
+
+----------------------------------------
+# of errors: 0
+# of succesful steps: 20000
+succesfull in %: 100.0
+Average common triplets count: 2.54755
+Sum of leaves rmap equal to first leaves: 0
+----------------------------------------
+
+WP4:
