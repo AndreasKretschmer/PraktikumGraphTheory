@@ -610,6 +610,7 @@ def get_min_candidates(V, D, candidates):
         else:
             for index, candidate in enumerate(comparison_candidates):
                 x, y, z, u_witness, alpha = min_candidate
+                min_candidate_values = [x, y, z]
                 # um zu schauen, ob er jemals hier in den zweig läuft
                 print(f'x: {x}')
                 print(f'y: {y}')
@@ -619,29 +620,31 @@ def get_min_candidates(V, D, candidates):
                     V, D, alpha, x, y, z, u_witness)
 
                 x, y, z, u_witness, alpha = candidate
+                candidate_values = [x, y, z]
                 delta_x, _, delta_y, delta_z = _compute_deltas(
                     V, D, alpha, x, y, z, u_witness)
 
+
                 comp_value_tuples = []
 
-                for min_property, min_value in vars(min_candidate).items():
-                    for property, value in vars(candidate).items():
+                for (i, min_value) in enumerate(min_candidate_values):
+                    for (j, value) in enumerate(candidate_values):
                         if (min_value == value):
                             first_value = math.inf
                             second_value = math.inf
 
-                            if "x" in str(min_property):
+                            if i == 0:
                                 first_value = min_delta_x
-                            elif "y" in str(min_property):
+                            elif i == 1:
                                 first_value = min_delta_y
-                            elif "z" in str(min_property):
+                            elif i == 2:
                                 first_value = min_delta_z
 
-                            if "x" in str(property):
+                            if j == 0:
                                 second_value = delta_x
-                            elif "y" in str(property):
+                            elif j == 1:
                                 second_value = delta_y
-                            elif "z" in str(property):
+                            elif j == 2:
                                 second_value = delta_z
 
                             comp_value_tuples.append(
