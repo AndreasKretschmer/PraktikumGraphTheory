@@ -1,3 +1,4 @@
 sim/**/*
 erdbeermet
 *.png
+__pycache__
