@@ -5,51 +5,68 @@ from erdbeermet.simulation import load
 from erdbeermet.recognition import recognize
 from erdbeermet.visualize.BoxGraphVis import plot_box_graph
 from itertools import permutations
+
 import numpy as np
 import os
 import timeit
 
-# from erdbeermet.recognition import alt_recognize
+from loguru import logger
 from recognition import alt_recognize
 
-def write_simulation_to_file(circular, clocklike, size, history, id):
-    result_dir = os.path.join(os.getcwd(), 'sim')
-    if not os.path.exists(result_dir):
-        os.makedirs(result_dir)
+def write_simulation_to_file(path, filename, history):
+    full_path = os.path.join(os.getcwd(), path)
 
-    filename = f'{id}_simulation_circular{circular}_clocklike_{clocklike}_size{size}'
-    filename = os.path.join(result_dir,filename)
+    if not os.path.exists(full_path):
+        os.makedirs(full_path)
+
+    filename = os.path.join(full_path, filename)
     history.write_history(filename)
 
-def load_simulations_from_files():
+
+
+def load_simulations_from_files(max_files = -1):
+    logger.debug(f'Loading simulations...')
+
     histories = []
+
     result_dir = os.path.join(os.getcwd(), 'sim')
-    for file in next(os.walk(result_dir), (None, None, []))[2]:
+    for index, file in enumerate(next(os.walk(result_dir), (None, None, []))[2]):
         histories.append(load(os.path.join(result_dir, file)))
+
+        if max_files > 0 and index + 1 == max_files:
+            break
+
+    logger.debug(f'Successfully loaded {max_files} simulations!')
 
     return histories
 
-def create_diff_simulations():
-    total_histories = []
+
+
+def create_diff_simulations(n):
+    logger.debug(f'Creating {4 * n} histories...')
+
     histories = []
-    j=0
-    for bool in (True, False):
-        for bool2 in (True, False):
-            for i in range(20000):
-                j+=1
-                size = np.random.randint(8, 10)
-                history = simulate(size, branching_prob=0.0, circular=bool, clocklike=bool2)
+    for circular in (True, False):
+        for clocklike in (True, False):
+            logger.debug(f'Creating{" circular" if circular else " NOT circular"}{" clocklike" if clocklike else " NOT clocklike"} simulations...')
+            for i in range(n):
+                size = np.random.randint(6, 10)
+                history = simulate(size, branching_prob=0.0, circular=circular, clocklike=clocklike)
                 histories.append(history)
-                write_simulation_to_file(bool, bool2, size, history, j)
-            total_histories.append(histories)
 
-    return total_histories
+                path = f'sim'
+                filename = f'{i}_{size}'
 
-def get_simulations(import_from_file = False):
-    if import_from_file:
-        return load_simulations_from_files(), []
-    else:
-        return create_diff_simulations()
+                if circular: filename += f'_circular'
+                if clocklike: filename += f'_clocklike'
+
+                write_simulation_to_file(path, filename, history)
+
+    logger.debug(f'Finished creating histories!')
+
+    return histories
+
+
 
 def compare_first_leaves(history, candidate):
     first_leaves = history.history[:4]
@@ -65,6 +82,7 @@ def compare_first_leaves(history, candidate):
             leaves_equal = True
 
     return leaves_equal
+
 
 
 def divergence_measure(history, rec_tree):
@@ -88,50 +106,66 @@ def divergence_measure(history, rec_tree):
     return common_triple_cnt
 
 
-def recognize_histories(histories, first_candidate_only=True, print_info=False, use_modified=False, Mode=''):
+
+def recognize_histories(histories, first_candidate_only=True, print_info=False, use_modified=False, mode=''):
     runtimes = []
-    n_cnt = 0
+    runs = 0
     errors = []
-    common_triplets_cnt_sum = []
-    leaves_equal_sum = []
+    common_triplets_total = []
+    leaves_equal_total = []
+
+    logger.debug(f'Recognizing {len(histories)} histories...')
 
     for history in histories:
-        n_cnt += 1
-        if (Mode=='WP3'):
-            start = timeit.default_timer()
-            rec_tree = recognize(history.D, first_candidate_only=first_candidate_only, print_info=print_info, B={0,1,2,3}, use_modified=use_modified)
-            stop = timeit.default_timer()
-            runtimes.append(stop - start)
-            error, leaves_equal, common_triplets_cnt = handle_reconstruction_result(rec_tree, history)
-            errors.append(error)
-            common_triplets_cnt_sum.append(common_triplets_cnt)
-            leaves_equal_sum.append(leaves_equal)
+        runs += 1
 
-        elif (Mode=='WP31'):
+        if runs % 10 == 0:
+            logger.debug(f'{runs} histories recognized!')
+
+        if (mode == 'WP3'):
+            start = timeit.default_timer()
+            rec_tree = recognize(
+                history.D,
+                first_candidate_only=first_candidate_only,
+                print_info=print_info,
+                B={0,1,2,3},
+                use_modified=use_modified
+            )
+            stop = timeit.default_timer()
+
+        elif (mode == 'WP31'):
             V = [i for i in range(history.D.shape[0])]
-            start = timeit.default_timer()
             rec_tree = any
-            for x, y, z in permutations(V, 3):
-                rec_tree = recognize(history.D ,first_candidate_only=first_candidate_only, print_info=print_info, B={x,y,z}, use_modified=use_modified)
-                if (rec_tree.root.valid_ways>0): break
-            stop = timeit.default_timer()
-            runtimes.append(stop - start)
-            error, leaves_equal, common_triplets_cnt = handle_reconstruction_result(rec_tree, history)
-            errors.append(error)
-            common_triplets_cnt_sum.append(common_triplets_cnt)
-            leaves_equal_sum.append(leaves_equal)
 
-        elif (Mode=='WP4'):
+            start = timeit.default_timer()
+            for x, y, z in permutations(V, 3):
+                rec_tree = recognize(
+                    history.D,
+                    first_candidate_only=first_candidate_only,
+                    print_info=print_info,
+                    B={x,y,z},
+                    use_modified=use_modified
+                )
+
+                if (rec_tree.root.valid_ways > 0): break
+            stop = timeit.default_timer()
+
+        elif (mode == 'WP4'):
             start = timeit.default_timer()
             rec_tree = alt_recognize(history.D)
             stop = timeit.default_timer()
-            runtimes.append(stop - start)
-            error, leaves_equal, common_triplets_cnt = handle_reconstruction_result(rec_tree, history)
-            errors.append(error)
-            common_triplets_cnt_sum.append(common_triplets_cnt)
-            leaves_equal_sum.append(leaves_equal)
 
-    return runtimes, n_cnt, errors, leaves_equal_sum, common_triplets_cnt_sum
+        runtimes.append(stop - start)
+        error, leaves_equal, common_triplets = handle_reconstruction_result(rec_tree, history)
+        errors.append(error)
+        common_triplets_total.append(common_triplets)
+        leaves_equal_total.append(leaves_equal)
+
+    logger.debug(f'Finished recognizing {runs} histories!')
+
+    return runtimes, runs, errors, leaves_equal_total, common_triplets_total
+
+
 
 def handle_reconstruction_result(rec_tree, history):
     is_rmap = (rec_tree.root.valid_ways > 0)
@@ -143,10 +177,12 @@ def handle_reconstruction_result(rec_tree, history):
         handle_reconstruction_failure(rec_tree)
         return 1, 0, 0
 
-def handle_reconstruction_success(history, rec_tree, print_info=False):
-    if print_info: print('Is R-Map!')
 
-    #select an candidate radomly
+
+def handle_reconstruction_success(history, rec_tree, print_info=False):
+    if print_info:
+        logger.info('R-map found!')
+
     candidates = []
     for node in rec_tree.preorder():
         if node.n == 4 and not node.info:
@@ -160,81 +196,122 @@ def handle_reconstruction_success(history, rec_tree, print_info=False):
     leaves_equal = compare_first_leaves(history, candidate)
     common_triple_cnt = divergence_measure(history, rec_tree)
     if print_info:
-        print(f'Possible R-Maps: {len(candidates)}')
-        print(f'Are first 4 simulation leaves and final 4-leaf map equal? {leaves_equal}')
-
-        print(f'Common triples: {common_triple_cnt}')
-        print('\n')
+        message = """
+            Possible R-Maps: {possible_rmaps}
+            Are first 4 simulation leaves and final 4-leaf map equal? {leaves_equal}
+            Common triples: {common_triple_cnt}
+        """.format(
+            possible_rmaps=len(candidates),
+            leaves_equal=leaves_equal,
+            common_triple_cnt=common_triple_cnt
+        )
 
     return leaves_equal, common_triple_cnt
 
+
+
 def handle_reconstruction_failure(rec_tree, print_info=False):
     if print_info:
-        print('reconstruction failed')
+        logger.info('Reconstruction failed!')
 
     for node in rec_tree.preorder():
-        V, D, R_step = node.V, node.D, node.R_step
+        V, D, r_step = node.V, node.D, node.R_step
         if print_info:
-            print(f'plotting box for {V} .........')
-            print('matrix:')
-            print(D)
+            message = """
+                plotting box for {V} .........
+                matrix:
+                {D}
 
-            print('\n')
-            print('step:')
-            print(R_step)
+                step:
+                {r_step}
+            """.format(
+                V=V,
+                D=D,
+                r_step=r_step
+            )
 
-            # plot_box_graph(D, labels=V)
 
 
 def average_runtimes(rec_runtimes):
-    print('\n')
-    print(f'# rec runtimes: {len(rec_runtimes)}')
-    print(f'Average recognition runtime: {np.mean(rec_runtimes)}s')
+    message = """
+        # rec runtimes: {runtimes}
+        Average recognition runtime: {mean_runtimes}s
+    """.format(
+        runtimes=len(rec_runtimes),
+        mean_runtimes=np.mean(rec_runtimes)
+    )
+
+    logger.info(message)
+
+
 
 def reconstruction_success_errors(n, err, leaves_equal, common_triplet_cnt):
-    print('\n')
-    print('----------------------------------------')
-    print(f'# of errors: {np.sum(err)}')
-    print(f'# of succesful steps: {n-np.sum(err)}')
-    print(f'succesfull in %: {((n-np.sum(err))/n)*100}')
-    print(f'Average common triplets count: {np.mean(common_triplet_cnt)}')
-    print(f'Sum of leaves rmap equal to first leaves: {np.sum(leaves_equal)}')
-    print('----------------------------------------')
+    message = """
+        # of errors: {error_count}
+        # of succesful steps: {successful_steps_count}
+        succesfull in %: {successful_steps_percentage}
+        # average common triplets: {average_common_triplets}
+        sum of leaves rmap equal to first leaves: {equal_leaves}
+    """.format(
+        error_count=np.sum(err),
+        successful_steps_count=n - np.sum(err),
+        successful_steps_percentage=((n - np.sum(err)) / n) * 100,
+        average_common_triplets=np.mean(common_triplet_cnt),
+        equal_leaves=np.sum(leaves_equal)
+    )
+
+    logger.info(message)
 
 
 def __main__():
-    total_histories = get_simulations(import_from_file=False)
+    logger.add("logs/debug.log", filter=lambda record: record["level"].name == "DEBUG")
+    logger.add("logs/info.log", filter=lambda record: record["level"].name == "INFO")
+    logger.add("logs/warn.log", filter=lambda record: record["level"].name == "WARN")
+    logger.add("logs/error.log", filter=lambda record: record["level"].name == "ERROR")
 
-    for histories in total_histories:
-        #WP1, WP2
-        rec_runtimes, n_wp3, err_wp3,leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3 = recognize_histories(histories, Mode='WP3')
-        average_runtimes(rec_runtimes)
-        reconstruction_success_errors(n_wp3, err_wp3, leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3)
-        rec_runtimes = []
-        err_wp3=[]
-        leaves_equal_sum_wp3=[]
-        common_triplets_cnt_sum_wp3=[]
+    # histories = create_diff_simulations(10000)
+    histories = load_simulations_from_files()
 
-        # #WP3
-        rec_runtimes, n_wp3, err_wp3,leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3 = recognize_histories(histories, use_modified=True, Mode='WP3')
-        average_runtimes(rec_runtimes)
-        reconstruction_success_errors(n_wp3, err_wp3, leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3)
-        rec_runtimes = []
-        err_wp3=[]
-        leaves_equal_sum_wp3=[]
-        common_triplets_cnt_sum_wp3=[]
-        # #WP3.1
-        rec_runtimes, n_wp3, err_wp3,leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3 = recognize_histories(histories, use_modified=True, Mode='WP31')
-        average_runtimes(rec_runtimes)
-        reconstruction_success_errors(n_wp3, err_wp3, leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3)
-        rec_runtimes = []
-        err_wp3=[]
-        leaves_equal_sum_wp3=[]
-        common_triplets_cnt_sum_wp3=[]
+    # WP1, WP2
+    logger.debug(f'Running workpages 1 and 2...')
+    rec_runtimes, runs, errors, leaves_equal_total, common_triplets_total = recognize_histories(
+        histories,
+        mode='WP3'
+    )
+    average_runtimes(rec_runtimes)
+    reconstruction_success_errors(runs, errors, leaves_equal_total, common_triplets_total)
 
-        #WP4
-        # rec_runtimes, n_wp3, err_wp3,leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3 = recognize_histories(histories, use_modified=True, Mode='WP4')
-        # average_runtimes(rec_runtimes)
-        # reconstruction_success_errors(n_wp3, err_wp3, leaves_equal_sum_wp3, common_triplets_cnt_sum_wp3)
+
+    # WP3
+    logger.debug(f'Running workpage 3...')
+    rec_runtimes, runs, errors, leaves_equal_total, common_triplets_total = recognize_histories(
+        histories,
+        use_modified=True,
+        mode='WP3'
+    )
+    average_runtimes(rec_runtimes)
+    reconstruction_success_errors(runs, errors, leaves_equal_total, common_triplets_total)
+
+
+    # WP3.1
+    logger.debug(f'Running workpage 3.1...')
+    rec_runtimes, runs, errors, leaves_equal_total, common_triplets_total = recognize_histories(
+        histories,
+        use_modified=True,
+        mode='WP31'
+    )
+    average_runtimes(rec_runtimes)
+    reconstruction_success_errors(runs, errors, leaves_equal_total, common_triplets_total)
+
+
+    # WP4
+    logger.debug(f'Running workpage 4...')
+    rec_runtimes, runs, errors,leaves_equal_total, common_triplets_total = recognize_histories(
+        histories,
+        use_modified=True,
+        mode='WP4'
+    )
+    average_runtimes(rec_runtimes)
+    reconstruction_success_errors(runs, errors, leaves_equal_total, common_triplets_total)
 
 __main__()
