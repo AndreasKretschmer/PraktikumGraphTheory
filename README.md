@@ -15,7 +15,9 @@ Silja Ava Schrimer, Alexander Vödisch, Andreas Kretschmer
 
 * Anschließend muss in Erdbeermet.src.erdbeermet.recognition.py folgender Code geändert werden:
     Zeile 195 muss ersetzt werden mit: 
+        ```
         def _find_candidates(D, V, print_info, B={}, use_modified=False):
+        ```
 
     In Zeile 203 muss folgender Code hinzugefügt werden:
         if (z in B) and use_modified:
