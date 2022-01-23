@@ -171,19 +171,17 @@ def handle_reconstruction_result(rec_tree, history):
     is_rmap = (rec_tree.root.valid_ways > 0)
 
     if is_rmap:
-        leaves_equal, common_triplets_cnt = handle_reconstruction_success(history, rec_tree)
+        leaves_equal, common_triplets_cnt = handle_reconstruction_success(history, rec_tree, False)
         return 0, leaves_equal, common_triplets_cnt
     else:
-        handle_reconstruction_failure(rec_tree)
+        handle_reconstruction_failure(rec_tree, True)
         return 1, 0, 0
 
 
 
 def handle_reconstruction_success(history, rec_tree, print_info=False):
-    if print_info:
-        logger.info('R-map found!')
-
     candidates = []
+
     for node in rec_tree.preorder():
         if node.n == 4 and not node.info:
             candidates.append(node)
@@ -195,16 +193,21 @@ def handle_reconstruction_success(history, rec_tree, print_info=False):
 
     leaves_equal = compare_first_leaves(history, candidate)
     common_triple_cnt = divergence_measure(history, rec_tree)
+
     if print_info:
+        logger.info('r-map found!')
+
         message = """
-            Possible R-Maps: {possible_rmaps}
-            Are first 4 simulation leaves and final 4-leaf map equal? {leaves_equal}
-            Common triples: {common_triple_cnt}
+            possible r-maps: {possible_rmaps}
+            are first 4 simulation leaves and final 4-leaf map equal? {leaves_equal}
+            common triples: {common_triple_cnt}
         """.format(
             possible_rmaps=len(candidates),
             leaves_equal=leaves_equal,
             common_triple_cnt=common_triple_cnt
         )
+
+        logger.info(message)
 
     return leaves_equal, common_triple_cnt
 
@@ -212,11 +215,9 @@ def handle_reconstruction_success(history, rec_tree, print_info=False):
 
 def handle_reconstruction_failure(rec_tree, print_info=False):
     if print_info:
-        logger.info('Reconstruction failed!')
+        logger.info('reconstruction failed!')
 
-    for node in rec_tree.preorder():
-        V, D, r_step = node.V, node.D, node.R_step
-        if print_info:
+        for node in rec_tree.preorder():
             message = """
                 plotting box for {V} .........
                 matrix:
@@ -225,17 +226,19 @@ def handle_reconstruction_failure(rec_tree, print_info=False):
                 step:
                 {r_step}
             """.format(
-                V=V,
-                D=D,
-                r_step=r_step
+                V=node.V,
+                D=node.D,
+                r_step=node.R_step
             )
+
+            logger.info(message)
 
 
 
 def average_runtimes(rec_runtimes):
     message = """
         # rec runtimes: {runtimes}
-        Average recognition runtime: {mean_runtimes}s
+        average recognition runtime: {mean_runtimes}s
     """.format(
         runtimes=len(rec_runtimes),
         mean_runtimes=np.mean(rec_runtimes)
