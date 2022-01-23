@@ -25,6 +25,12 @@ Silja Ava Schrimer, Alexander Vödisch, Andreas Kretschmer
                 continue 
         ```
 
+* Um das Programm zu starten muss gen_class_pipe.py ausgeführt werden
+    ```
+    python gen_class_pip.py
+    ```
+
+
 #### Dependencies
 
 Python >= 3.7
