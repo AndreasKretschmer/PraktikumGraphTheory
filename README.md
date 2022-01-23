@@ -27,7 +27,7 @@ Silja Ava Schrimer, Alexander Vödisch, Andreas Kretschmer
 
 * Um das Programm zu starten muss gen_class_pipe.py ausgeführt werden
     ```
-    python gen_class_pip.py
+    python gen_class_pipe.py
     ```
 
 
