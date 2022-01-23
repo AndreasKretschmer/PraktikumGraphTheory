@@ -219,7 +219,8 @@ def handle_reconstruction_failure(rec_tree, print_info=False):
 
         for node in rec_tree.preorder():
             message = """
-                plotting box for {V} .........
+                plotting box for {V}
+
                 matrix:
                 {D}
 
