@@ -31,7 +31,7 @@ def load_simulations_from_files(max_files = -1):
 
     result_dir = os.path.join(os.getcwd(), 'sim')
     for index, file in enumerate(next(os.walk(result_dir), (None, None, []))[2]):
-        histories.append(load(os.path.join(result_dir, file)))
+        histories.append((load(os.path.join(result_dir, file)), file))
 
         if max_files > 0 and index + 1 == max_files:
             break
@@ -116,7 +116,7 @@ def recognize_histories(histories, first_candidate_only=True, print_info=False, 
 
     logger.debug(f'Recognizing {len(histories)} histories...')
 
-    for history in histories:
+    for (history, file) in histories:
         runs += 1
 
         if runs % 100 == 0:
@@ -158,6 +158,8 @@ def recognize_histories(histories, first_candidate_only=True, print_info=False, 
         runtimes.append(stop - start)
         error, leaves_equal, common_triplets = handle_reconstruction_result(rec_tree, history)
         errors.append(error)
+        if error:
+            logger.error(f'File: {file}')
         common_triplets_total.append(common_triplets)
         leaves_equal_total.append(leaves_equal)
 
@@ -273,7 +275,7 @@ def __main__():
     logger.add("logs/warn.log", filter=lambda record: record["level"].name == "WARN")
     logger.add("logs/error.log", filter=lambda record: record["level"].name == "ERROR")
 
-    # histories = create_diff_simulations(10000)
+    # histories = create_diff_simulations(12)
     histories = load_simulations_from_files()
 
     # WP1, WP2
@@ -286,7 +288,7 @@ def __main__():
     reconstruction_success_errors(runs, errors, leaves_equal_total, common_triplets_total)
 
 
-    # WP3
+    # # WP3
     logger.debug(f'Running workpage 3...')
     rec_runtimes, runs, errors, leaves_equal_total, common_triplets_total = recognize_histories(
         histories,
@@ -297,7 +299,7 @@ def __main__():
     reconstruction_success_errors(runs, errors, leaves_equal_total, common_triplets_total)
 
 
-    # WP3.1
+    # # WP3.1
     logger.debug(f'Running workpage 3.1...')
     rec_runtimes, runs, errors, leaves_equal_total, common_triplets_total = recognize_histories(
         histories,
@@ -309,13 +311,13 @@ def __main__():
 
 
     # WP4
-    # logger.debug(f'Running workpage 4...')
-    # rec_runtimes, runs, errors,leaves_equal_total, common_triplets_total = recognize_histories(
-    #     histories,
-    #     use_modified=True,
-    #     mode='WP4'
-    # )
-    # average_runtimes(rec_runtimes)
-    # reconstruction_success_errors(runs, errors, leaves_equal_total, common_triplets_total)
+    logger.debug(f'Running workpage 4...')
+    rec_runtimes, runs, errors,leaves_equal_total, common_triplets_total = recognize_histories(
+        histories,
+        use_modified=True,
+        mode='WP4'
+    )
+    average_runtimes(rec_runtimes)
+    reconstruction_success_errors(runs, errors, leaves_equal_total, common_triplets_total)
 
 __main__()
