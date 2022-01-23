@@ -5,11 +5,12 @@ Silja Ava Schrimer, Alexander Vödisch, Andreas Kretschmer
 ## Installation
 
 * Als erstes muss [Erbeermet](https://github.com/david-schaller/Erdbeermet) installiert werden.
-* In dem gleichen Ordner, indem auch Erdbeermet installiert wurde, muss dann dieses Repository geklont werden.
+* In dem gleichen Ordner, indem auch Erdbeermet installiert wurde, muss dann dieses Repository geklont werden und die Simulationen hinzugefügt werden. (Alternativ können die Simulationen auch neu erstellt werden, indem man zeile 278 in gen_class_pipe.py einkommentiert und 279 auskommentiert.)
     - Beispiel:
         - Order
             - Erbeermet
             - PraktikumGraphTheory
+            - sim
 
 * Anschließend muss in Erdbeermet.src.erdbeermet.recognition.py folgender Code geändert werden:
     - Zeile 195 muss ersetzt werden mit: 
