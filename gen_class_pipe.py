@@ -36,7 +36,7 @@ def load_simulations_from_files(max_files = -1):
         if max_files > 0 and index + 1 == max_files:
             break
 
-    logger.debug(f'Successfully loaded {max_files} simulations!')
+    logger.debug(f'Successfully loaded {max_files if max_files >= 0 else "all"} simulations!')
 
     return histories
 
@@ -119,7 +119,7 @@ def recognize_histories(histories, first_candidate_only=True, print_info=False, 
     for history in histories:
         runs += 1
 
-        if runs % 10 == 0:
+        if runs % 100 == 0:
             logger.debug(f'{runs} histories recognized!')
 
         if (mode == 'WP3'):
@@ -308,13 +308,13 @@ def __main__():
 
 
     # WP4
-    logger.debug(f'Running workpage 4...')
-    rec_runtimes, runs, errors,leaves_equal_total, common_triplets_total = recognize_histories(
-        histories,
-        use_modified=True,
-        mode='WP4'
-    )
-    average_runtimes(rec_runtimes)
-    reconstruction_success_errors(runs, errors, leaves_equal_total, common_triplets_total)
+    # logger.debug(f'Running workpage 4...')
+    # rec_runtimes, runs, errors,leaves_equal_total, common_triplets_total = recognize_histories(
+    #     histories,
+    #     use_modified=True,
+    #     mode='WP4'
+    # )
+    # average_runtimes(rec_runtimes)
+    # reconstruction_success_errors(runs, errors, leaves_equal_total, common_triplets_total)
 
 __main__()

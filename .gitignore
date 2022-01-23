@@ -3,3 +3,4 @@ erdbeermet
 *.png
 __pycache__
 logs
+*.out
