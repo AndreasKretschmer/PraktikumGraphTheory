@@ -7,13 +7,9 @@ Silja Ava Schrimer, Alexander Vödisch, Andreas Kretschmer
 * Als erstes muss [Erbeermet](https://github.com/david-schaller/Erdbeermet) installiert werden.
 * In dem gleichen Ordner, indem auch Erdbeermet installiert wurde, muss dann dieses Repository geklont werden.
     - Beispiel:
-        - ```
-        Praktikum
-            |
-            |--Erbeermet
-            |
-            |--PraktikumGraphTheory
-        ```
+        - Order
+            - Erbeermet
+            - PraktikumGraphTheory
 
 * Anschließend muss in Erdbeermet.src.erdbeermet.recognition.py folgender Code geändert werden:
     - Zeile 195 muss ersetzt werden mit: 
