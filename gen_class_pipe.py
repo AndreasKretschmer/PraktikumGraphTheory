@@ -52,13 +52,13 @@ def create_diff_simulations(n):
             for i in range(n):
                 size = np.random.randint(6, 10)
                 history = simulate(size, branching_prob=0.0, circular=circular, clocklike=clocklike)
-                histories.append(history)
 
                 path = f'sim'
                 filename = f'{i}_{size}'
 
                 if circular: filename += f'_circular'
                 if clocklike: filename += f'_clocklike'
+                histories.append((history, filename))
 
                 write_simulation_to_file(path, filename, history)
 
@@ -69,16 +69,12 @@ def create_diff_simulations(n):
 
 
 def compare_first_leaves(history, candidate):
-    first_leaves = history.history[:4]
-
-    leaves_indices = []
-
-    for leaf in first_leaves:
-        leaves_indices.append(leaf[2])
+    first_leaves = [0,1,2,3] 
+    # die ersten 4 Blätter wurden gleich [1,2,3,4] gesetzt, diese wurden jetzt mit den richtigen 4 Blättern gefüllt
 
     leaves_equal = False
     if candidate.n == 4 and not candidate.info:
-        if (set(candidate.V) == set(leaves_indices)):
+        if (set(candidate.V) == set(first_leaves)):
             leaves_equal = True
 
     return leaves_equal
@@ -122,7 +118,18 @@ def recognize_histories(histories, first_candidate_only=True, print_info=False, 
         if runs % 100 == 0:
             logger.debug(f'{runs} histories recognized!')
 
-        if (mode == 'WP3'):
+        if (mode == 'WP2'):
+            start = timeit.default_timer()
+            rec_tree = recognize(
+                history.D,
+                first_candidate_only=first_candidate_only,
+                print_info=print_info,
+                B={0,1,2,3},
+                use_modified=use_modified
+            )
+            stop = timeit.default_timer()
+
+        elif (mode == 'WP3'):
             start = timeit.default_timer()
             rec_tree = recognize(
                 history.D,
@@ -152,7 +159,7 @@ def recognize_histories(histories, first_candidate_only=True, print_info=False, 
 
         elif (mode == 'WP4'):
             start = timeit.default_timer()
-            rec_tree = alt_recognize(history.D)
+            rec_tree = alt_recognize(history.D, first_candidate_only=True, print_info=print_info) # das "first_candidate_only=True" wurde in der ersten Auswertung leider vergessen
             stop = timeit.default_timer()
 
         runtimes.append(stop - start)
@@ -275,14 +282,14 @@ def __main__():
     logger.add("logs/warn.log", filter=lambda record: record["level"].name == "WARN")
     logger.add("logs/error.log", filter=lambda record: record["level"].name == "ERROR")
 
-    # histories = create_diff_simulations(12)
-    histories = load_simulations_from_files()
+    histories = create_diff_simulations(10)
+    # histories = load_simulations_from_files()
 
     # WP1, WP2
     logger.debug(f'Running workpages 1 and 2...')
     rec_runtimes, runs, errors, leaves_equal_total, common_triplets_total = recognize_histories(
         histories,
-        mode='WP3'
+        mode='WP2'
     )
     average_runtimes(rec_runtimes)
     reconstruction_success_errors(runs, errors, leaves_equal_total, common_triplets_total)
@@ -310,11 +317,11 @@ def __main__():
     reconstruction_success_errors(runs, errors, leaves_equal_total, common_triplets_total)
 
 
-    # WP4
+    # # WP4
     logger.debug(f'Running workpage 4...')
     rec_runtimes, runs, errors,leaves_equal_total, common_triplets_total = recognize_histories(
         histories,
-        use_modified=True,
+        use_modified=False, # bei der ersten Auswertung wurde die Erweiterung von WP3 in WP4 mit benutzt das wurde hier korrigiert
         mode='WP4'
     )
     average_runtimes(rec_runtimes)
